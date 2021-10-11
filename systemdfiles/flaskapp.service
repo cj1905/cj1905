@@ -3,7 +3,7 @@
 Description=flask app service
 
 [Service]
-ExecStart=python3 /home/ec2-user/cj1905/project/app.py
+ExecStart=python3 /home/ec2-user/test/project/app.py
 
 [Install]
 WantedBy=multi-user.target
