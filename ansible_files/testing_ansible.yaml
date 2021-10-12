@@ -1,0 +1,54 @@
+---
+- hosts: webapps
+  become: no
+  gather_facts: yes
+  vars:
+    service_name: flaskapp.service
+    file_path: /home/ec2-user/test
+
+  tasks:
+    - name: Gathering facts of service
+      service_facts:
+
+    - name: Check if service is installed
+      assert:
+        that:
+          - "'{{ansible_facts.services['flaskapp.service'].name}}' == 'flaskapp.service'"
+        fail_msg: "Alert - {{service_name}} is not installed"
+        success_msg: "{{service_name}} is installed"
+
+    - name: Check if service is running
+      assert:
+        that:
+          - "'{{ansible_facts.services['flaskapp.service'].state}}' == 'running'"
+        fail_msg: "Alert - {{service_name}} is not running"
+        success_msg: "{{service_name}} is running"
+
+    - name: Gathering facts on config change
+      shell: cat '{{file_path}}/project/app.py' | grep host
+      register: result
+
+    - debug:
+        var: result
+
+    - name : Check if the config is updated
+      assert:
+        that:
+          - result.stdout == "    app.run(host='0.0.0.0', debug=True)"
+        fail_msg: "Alert - config not updated"
+        success_msg: "Config updated correctly."
+
+    - name: Gathering facts of port
+      listen_ports_facts:
+
+    - debug:
+        msg: "{{ tcp_listen }}"
+
+    - name: Check if port 5000 is listening
+      assert:
+        that:
+          - "'{{item['port']}}' == '5000'"
+        fail_msg: "Alert - Port is not listening"
+        success_msg: "Port is listening"
+      with_items:
+        - "{{ tcp_listen }}"

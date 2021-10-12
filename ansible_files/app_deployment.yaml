@@ -1,0 +1,63 @@
+---
+- hosts: webapps
+  become: yes
+  vars:
+    file_path: /home/ec2-user/test
+
+  tasks:
+    - name: Installing Git on client node
+      yum:
+        name: git
+
+    - name : Creating directory on client node
+      file:
+        path: "{{ file_path }}"
+        state: directory
+        owner:  ec2-user
+        group: ec2-user
+        mode: 0755
+
+    - name: deploy code using git on client node
+      git:
+        repo : https://github.com/cj1905/cj1905.git
+        dest: "{{ file_path }}"
+        version: develop
+        force: yes
+
+    - name: chown to ec2-user in test directory on client node
+      file:
+        owner: ec2-user
+        group: ec2-user
+        path: "{{ file_path }}"
+        recurse: yes
+
+    - name: Install flask package for the application on client node
+      pip:
+        name: flask
+        extra_args: --user
+
+    - name: On client copy systemd file from test folder to systemd folder
+      command: "cp {{ file_path }}/systemdfiles/flaskapp.service /usr/lib/systemd/system/"
+
+    - name: enabling flask app service
+      service:
+        name: flaskapp.service
+
+    - name: issue daemon-reload to pick up config changes
+      systemd:
+        state: restarted
+        daemon_reload: yes
+        name: flaskapp.service
+
+    - name: Updating the existig app.py config
+      lineinfile:
+        path:  "{{ file_path }}/project/app.py"
+        search_string: 'app.run(debug=True)'
+        line: "    app.run(host='0.0.0.0', debug=True)"
+        owner: ec2-user
+        group: ec2-user
+        mode: 0755
+
+    - name: starting the flaskapp service
+      service: name=flaskapp.service state=restarted
+
